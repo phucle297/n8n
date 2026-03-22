@@ -1,13 +1,15 @@
 """
 Stage 2: generate_script.py — Script Generation
 
-Generates a structured narration script from a Paper using GPT-4o.
+Generates a structured narration script from a Paper using the configured AI provider.
 
 Usage:
     python python/generate_script.py --paper '<json string from stage 1>'
 
 Environment:
-    OPENAI_API_KEY  (required)
+    AI_PROVIDER     openai | gemini  (default: openai)
+    OPENAI_API_KEY  required when AI_PROVIDER=openai
+    GEMINI_API_KEY  required when AI_PROVIDER=gemini
 
 stdout on success: JSON per cli-interface.md Stage 2 contract
 stderr on failure: human-readable message
@@ -21,6 +23,10 @@ import sys
 from datetime import datetime, timezone
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+from python.lib.ai_config import load as load_ai_config
+from python.lib.ai_provider import generate_text
+from python.lib.voice_profile import ConfigError
 
 
 def _utcnow() -> str:
@@ -87,20 +93,13 @@ def main() -> None:
         print("ERROR: Paper has empty abstract; cannot generate script.", file=sys.stderr)
         sys.exit(1)
 
-    # --- API key ---
-    api_key = os.environ.get("OPENAI_API_KEY", "").strip()
-    if not api_key:
-        print("ERROR: OPENAI_API_KEY environment variable is not set.", file=sys.stderr)
-        sys.exit(1)
-
-    # --- Call GPT-4o ---
+    # --- AI provider config ---
     try:
-        from openai import OpenAI  # type: ignore
-    except ImportError:
-        print("ERROR: openai package not installed. Run: pip install openai", file=sys.stderr)
+        ai_cfg = load_ai_config()
+    except ConfigError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
         sys.exit(1)
 
-    client = OpenAI(api_key=api_key)
     user_prompt = _USER_PROMPT_TEMPLATE.format(
         paper_id=paper_id,
         title=paper.get("title", ""),
@@ -109,26 +108,21 @@ def main() -> None:
     )
 
     try:
-        response = client.chat.completions.create(
-            model="gpt-4o-2024-08-06",
-            response_format={"type": "json_object"},
-            messages=[
-                {"role": "system", "content": _SYSTEM_PROMPT},
-                {"role": "user", "content": user_prompt},
-            ],
-            temperature=0.7,
+        raw_json, model_used = generate_text(
+            system_prompt=_SYSTEM_PROMPT,
+            user_prompt=user_prompt,
+            provider=ai_cfg["provider"],
+            api_key=ai_cfg["api_key"],
         )
-        model_used: str = response.model
-        raw_json: str = response.choices[0].message.content or ""
     except Exception as exc:
-        print(f"ERROR: OpenAI API error: {exc}", file=sys.stderr)
+        print(f"ERROR: AI API error ({ai_cfg['provider']}): {exc}", file=sys.stderr)
         sys.exit(1)
 
-    # --- Parse GPT response ---
+    # --- Parse AI response ---
     try:
         gpt_data = json.loads(raw_json)
     except json.JSONDecodeError as exc:
-        print(f"ERROR: GPT response is not valid JSON: {exc}", file=sys.stderr)
+        print(f"ERROR: AI response is not valid JSON: {exc}\nRaw: {raw_json[:200]}", file=sys.stderr)
         sys.exit(1)
 
     # --- Build script object ---

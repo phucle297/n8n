@@ -1,13 +1,17 @@
 """
 Stage 4: generate_images.py — Image Generation
 
-Generates one image per key concept in the script using DALL-E 3.
+Generates one image per key concept in the script using the configured AI provider.
+- OpenAI: DALL-E 3 (1792x1024)
+- Gemini: Imagen 3 (16:9)
 
 Usage:
     python python/generate_images.py --script '<json>' --run-id '<uuid>'
 
 Environment:
-    OPENAI_API_KEY  (required)
+    AI_PROVIDER     openai | gemini  (default: openai)
+    OPENAI_API_KEY  required when AI_PROVIDER=openai
+    GEMINI_API_KEY  required when AI_PROVIDER=gemini
 
 stdout on success: JSON per cli-interface.md Stage 4 contract
 stderr on failure: human-readable message
@@ -22,6 +26,10 @@ import uuid
 from datetime import datetime, timezone
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+from python.lib.ai_config import load as load_ai_config
+from python.lib.ai_provider import generate_image
+from python.lib.voice_profile import ConfigError
 
 
 def _utcnow() -> str:
@@ -56,19 +64,21 @@ def main() -> None:
         print("ERROR: Script has no key_concepts in outline.", file=sys.stderr)
         sys.exit(1)
 
-    # --- API key ---
-    api_key = os.environ.get("OPENAI_API_KEY", "").strip()
-    if not api_key:
-        print("ERROR: OPENAI_API_KEY environment variable is not set.", file=sys.stderr)
-        sys.exit(1)
-
+    # --- AI provider config ---
     try:
-        from openai import OpenAI  # type: ignore
-    except ImportError:
-        print("ERROR: openai not installed. Run: pip install openai", file=sys.stderr)
+        ai_cfg = load_ai_config()
+    except ConfigError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
         sys.exit(1)
 
-    client = OpenAI(api_key=api_key)
+    provider = ai_cfg["provider"]
+    api_key = ai_cfg["api_key"]
+
+    # Map provider to asset metadata
+    _SOURCE_MAP = {"openai": "dalle3", "gemini": "imagen3"}
+    _LICENCE_MAP = {"openai": "openai-tos-commercial", "gemini": "openai-tos-commercial"}
+    source = _SOURCE_MAP.get(provider, provider)
+    licence = _LICENCE_MAP.get(provider, "openai-tos-commercial")
 
     out_dir = f"/tmp/science_narrator/{run_id}"
     os.makedirs(out_dir, exist_ok=True)
@@ -80,28 +90,13 @@ def main() -> None:
         definition = concept.get("definition", "")
         prompt = _PROMPT_TEMPLATE.format(concept=term, definition=definition)
 
-        try:
-            response = client.images.generate(
-                model="dall-e-3",
-                prompt=prompt,
-                size="1792x1024",
-                quality="standard",
-                n=1,
-            )
-            image_url: str = response.data[0].url or ""
-        except Exception as exc:
-            print(f"ERROR: DALL-E 3 API error for concept '{term}': {exc}", file=sys.stderr)
-            sys.exit(1)
-
-        # Download image
         img_filename = f"image_{idx + 1:02d}.png"
         img_path = os.path.join(out_dir, img_filename)
 
         try:
-            import urllib.request
-            urllib.request.urlretrieve(image_url, img_path)
+            generate_image(prompt=prompt, provider=provider, api_key=api_key, out_path=img_path)
         except Exception as exc:
-            print(f"ERROR: Failed to download image for '{term}': {exc}", file=sys.stderr)
+            print(f"ERROR: Image generation failed for concept '{term}': {exc}", file=sys.stderr)
             sys.exit(1)
 
         if not os.path.isfile(img_path) or os.path.getsize(img_path) == 0:
@@ -112,9 +107,9 @@ def main() -> None:
             {
                 "asset_id": str(uuid.uuid4()),
                 "type": "image",
-                "source": "dalle3",
+                "source": source,
                 "generation_prompt": prompt,
-                "licence": "openai-tos-commercial",
+                "licence": licence,
                 "verified": True,
                 "created_at": _utcnow(),
                 "file_path": img_path,

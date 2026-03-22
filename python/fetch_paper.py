@@ -22,6 +22,7 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from python.lib import arxiv_client, dedup_store, nasa_rss_client, voice_profile
+from python.lib.ai_config import load as load_ai_config
 from python.lib.voice_profile import ConfigError
 
 
@@ -40,11 +41,17 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    # --- Validate voice profile first (fail-fast before any API spend) ---
+    # --- Fail-fast: validate voice profile + AI provider before any API spend ---
     try:
         voice_profile.load()
     except ConfigError as exc:
         print(f"ERROR: Voice profile misconfigured: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        load_ai_config()
+    except ConfigError as exc:
+        print(f"ERROR: AI provider misconfigured: {exc}", file=sys.stderr)
         sys.exit(1)
 
     run_id = str(uuid.uuid4())
