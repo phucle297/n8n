@@ -44,12 +44,12 @@ work is blocked until this phase is complete.
 
 **⚠️ CRITICAL**: No user story implementation can begin until this phase is complete.
 
-- [ ] T006 Create `python/lib/run_logger.py` — structured JSON logger: init with `run_id`, write `StageResult` dicts (`stage`, `status`, `duration_sec`, `error`), flush to `logs/<run_id>.json` on each stage completion
-- [ ] T007 [P] Create `python/lib/manifest.py` — `Asset` and `ProvenanceManifest` dataclasses matching data-model.md; `write_manifest(run_id, paper_id, assets, video_files) -> str` writes `output/<run_id>/assets-manifest.json`; approved licence enum: `openai-tos-commercial`, `pipeline-generated`, `cc0`, `cc-by-4.0`, `pexels-licence`, `unsplash-licence`, `pixabay-licence`
-- [ ] T008 [P] Create `python/lib/dedup_store.py` — `load() -> list[str]`, `is_duplicate(paper_id) -> bool`, `register(paper_id)` (appends to `data/processed_papers.json`); `register` only called after successful export
-- [ ] T009 [P] Create `python/lib/voice_profile.py` — load `VOICE_PROVIDER`, `VOICE_LOCALE`, `VOICE_SPEED`, `VOICE_PITCH`, `VOICE_ID` from `os.environ`; return `VoiceProfile` dict with documented defaults; emit notice to stderr when defaults are used; validate provider enum (`gtts`|`openai`) and speed range [0.5, 2.0]; detect missing `OPENAI_API_KEY` when `provider=openai` and raise `ConfigError`
-- [ ] T010 Create `python/lib/arxiv_client.py` — `search(topic: str, max_results: int = 5) -> list[dict]`; queries `https://export.arxiv.org/api/query` with Atom XML response; parses `entry` elements into Paper dicts; returns empty list if HTTP error or no results; includes `licence` field (default `arxiv-non-exclusive`)
-- [ ] T011 [P] Create `python/lib/nasa_rss_client.py` — `search(topic: str) -> list[dict]`; parses NASA RSS/APOD feed via `feedparser`; maps feed entries to Paper dict shape; returns empty list on parse failure
+- [X] T006 Create `python/lib/run_logger.py` — structured JSON logger: init with `run_id`, write `StageResult` dicts (`stage`, `status`, `duration_sec`, `error`), flush to `logs/<run_id>.json` on each stage completion
+- [X] T007 [P] Create `python/lib/manifest.py` — `Asset` and `ProvenanceManifest` dataclasses matching data-model.md; `write_manifest(run_id, paper_id, assets, video_files) -> str` writes `output/<run_id>/assets-manifest.json`; approved licence enum: `openai-tos-commercial`, `pipeline-generated`, `cc0`, `cc-by-4.0`, `pexels-licence`, `unsplash-licence`, `pixabay-licence`
+- [X] T008 [P] Create `python/lib/dedup_store.py` — `load() -> list[str]`, `is_duplicate(paper_id) -> bool`, `register(paper_id)` (appends to `data/processed_papers.json`); `register` only called after successful export
+- [X] T009 [P] Create `python/lib/voice_profile.py` — load `VOICE_PROVIDER`, `VOICE_LOCALE`, `VOICE_SPEED`, `VOICE_PITCH`, `VOICE_ID` from `os.environ`; return `VoiceProfile` dict with documented defaults; emit notice to stderr when defaults are used; validate provider enum (`gtts`|`openai`) and speed range [0.5, 2.0]; detect missing `OPENAI_API_KEY` when `provider=openai` and raise `ConfigError`
+- [X] T010 Create `python/lib/arxiv_client.py` — `search(topic: str, max_results: int = 5) -> list[dict]`; queries `https://export.arxiv.org/api/query` with Atom XML response; parses `entry` elements into Paper dicts; returns empty list if HTTP error or no results; includes `licence` field (default `arxiv-non-exclusive`)
+- [X] T011 [P] Create `python/lib/nasa_rss_client.py` — `search(topic: str) -> list[dict]`; parses NASA RSS/APOD feed via `feedparser`; maps feed entries to Paper dict shape; returns empty list on parse failure
 
 **Checkpoint**: All shared libraries complete — user story implementation can begin.
 
