@@ -3,19 +3,18 @@ FROM n8nio/n8n:latest
 USER root
 
 # System dependencies: Python 3, ffmpeg, ImageMagick (required by MoviePy TextClip)
-RUN apk add --no-cache \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
-    py3-pip \
+    python3-pip \
     python3-dev \
     ffmpeg \
     imagemagick \
-    imagemagick-dev \
+    libmagickwand-dev \
     gcc \
-    musl-dev \
-    jpeg-dev \
-    zlib-dev \
-    freetype-dev \
-    && rm -rf /var/cache/apk/*
+    libjpeg-dev \
+    zlib1g-dev \
+    libfreetype6-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy and install Python dependencies
 COPY python/requirements.txt /app/python/requirements.txt
