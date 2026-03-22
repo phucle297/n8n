@@ -25,7 +25,8 @@ services:
       - N8N_PROTOCOL=http
       - WEBHOOK_URL=http://localhost:5678/
       # Allow Execute Command nodes (required for pipeline)
-      - N8N_ALLOW_EXEC=true
+      # n8n v2 excludes executeCommand by default — override with empty exclusion list
+      - NODES_EXCLUDE=[]
       # Timezone
       - GENERIC_TIMEZONE=UTC
       # Increase execution timeout to 20 min (pipeline can take ~15 min)
