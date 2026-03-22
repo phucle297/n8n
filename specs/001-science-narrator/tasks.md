@@ -29,11 +29,11 @@ and testing of each story. No tests generated (not requested in spec).
 
 **Purpose**: Project initialization and directory layout per plan.md structure decision.
 
-- [ ] T001 Create directory structure: `python/lib/`, `python/tests/unit/`, `python/tests/integration/`, `n8n_workflows/`, `data/`, `output/`, `logs/`
-- [ ] T002 [P] Create `python/requirements.txt` with pinned dependencies: `moviepy==1.0.3`, `openai>=1.0`, `requests>=2.31`, `gTTS>=2.5`, `feedparser>=6.0`, `Pillow>=10.0`
-- [ ] T003 [P] Create `.gitignore` excluding: `output/`, `logs/`, `python/venv/`, `__pycache__/`, `*.mp4`, `*.mp3`, `*.png` (temp paths), `.env`
-- [ ] T004 [P] Create `data/processed_papers.json` with initial content `[]` (append-only deduplication store)
-- [ ] T005 [P] Create `python/lib/__init__.py` and `python/tests/__init__.py` (empty package markers)
+- [X] T001 Create directory structure: `python/lib/`, `python/tests/unit/`, `python/tests/integration/`, `n8n_workflows/`, `data/`, `output/`, `logs/`
+- [X] T002 [P] Create `python/requirements.txt` with pinned dependencies: `moviepy==1.0.3`, `openai>=1.0`, `requests>=2.31`, `gTTS>=2.5`, `feedparser>=6.0`, `Pillow>=10.0`
+- [X] T003 [P] Create `.gitignore` excluding: `output/`, `logs/`, `python/venv/`, `__pycache__/`, `*.mp4`, `*.mp3`, `*.png` (temp paths), `.env`
+- [X] T004 [P] Create `data/processed_papers.json` with initial content `[]` (append-only deduplication store)
+- [X] T005 [P] Create `python/lib/__init__.py` and `python/tests/__init__.py` (empty package markers)
 
 ---
 
@@ -71,7 +71,7 @@ all six stages manually. Confirm `output/<run_id>/` contains `video_vertical.mp4
 - [ ] T013 [US1] Create `python/generate_script.py` — CLI: `--paper JSON`; calls OpenAI GPT-4o with `response_format={"type":"json_object"}`; prompt enforces: learning objective sentence first, define each term on first use, cite arXiv ID per factual claim, 750–900 word narration, structured outline with `intro`/`key_concepts[]`/`conclusion`; validates `word_count` in [650, 950] and `learning_objective` non-empty and `citations` non-empty; writes stdout JSON per Stage 2 contract
 - [ ] T014 [US1] Create `python/generate_voice.py` — CLI: `--script JSON`, `--run-id UUID`; loads `VoiceProfile` via `voice_profile.py`; if `provider=gtts`: calls `gTTS(text, lang=locale)`, saves to `/tmp/science_narrator/<run_id>/narration.mp3`; outputs audio `Asset` JSON per Stage 3 contract with `source=gtts`, `licence=pipeline-generated`, `verified=true`
 - [ ] T015 [P] [US1] Create `python/generate_images.py` — CLI: `--script JSON`, `--run-id UUID`; iterates `script.outline.key_concepts[]`; for each concept calls `openai.images.generate(model="dall-e-3", prompt=..., size="1792x1024")`; saves PNG to `/tmp/science_narrator/<run_id>/image_NN.png`; builds `images` list of `Asset` dicts with `source=dalle3`, `licence=openai-tos-commercial`, `verified=true`, `generation_prompt` recorded; writes stdout JSON per Stage 4 contract
-- [ ] T016 [US1] Create `python/render_video.py` — CLI: `--script JSON`, `--audio JSON`, `--images JSON`, `--run-id UUID`, `--background-video PATH` (optional); loads narration MP3 via `AudioFileClip`; distributes images evenly across audio duration via `ImageClip` sequence; generates synced caption `TextClip` per ~10-word narration segment (timed proportionally by word count); overlays arXiv paper ID as bottom-right `TextClip` on all frames; composites into `CompositeVideoClip`; exports 16:9 (1920×1080) to `/tmp/science_narrator/<run_id>/video_horizontal.mp4`; if `--background-video` provided, loop it to audio duration and use as base layer; writes stdout JSON per Stage 5 contract (single format initially; extended to dual-format in US2)
+- [X] T016 [US1] Create `python/render_video.py` — CLI: `--script JSON`, `--audio JSON`, `--images JSON`, `--run-id UUID`, `--background-video PATH` (optional); loads narration MP3 via `AudioFileClip`; distributes images evenly across audio duration via `ImageClip` sequence; generates synced caption `TextClip` per ~10-word narration segment (timed proportionally by word count); overlays arXiv paper ID as bottom-right `TextClip` on all frames; composites into `CompositeVideoClip`; exports 16:9 (1920×1080) to `/tmp/science_narrator/<run_id>/video_horizontal.mp4`; if `--background-video` provided, loop it to audio duration and use as base layer; writes stdout JSON per Stage 5 contract (single format initially; extended to dual-format in US2)
 - [ ] T017 [US1] Create `python/validate_manifest.py` — CLI: `--audio JSON`, `--images JSON`, `--videos JSON`, `--run-id UUID`; merges all assets; validates each `asset.licence` against approved enum in `manifest.py`; validates each `asset.verified == true`; calls `manifest.write_manifest()`; validates both video files exist on disk; exits 1 with per-asset stderr detail on any failure; writes stdout JSON per Stage 6 contract
 - [ ] T018 [US1] Create `n8n_workflows/science_narrator.json` — n8n workflow with: Manual Trigger → Set node (topic input) → 6 Execute Command nodes (stages 1–6 chained, each reading `stdout` from previous via `$json` reference) → Move Files node (temp → `output/<run_id>/`) → Error node (catches any non-zero exit, logs to stderr); workflow uses `OPENAI_API_KEY` from n8n environment variables
 
@@ -90,8 +90,8 @@ via `ffprobe`. Both files must have identical audio duration.
 
 ### Implementation for User Story 2
 
-- [ ] T019 [US2] Extend `python/render_video.py` to export both formats in one invocation: after 16:9 export, reframe the same `CompositeVideoClip` to 9:16 (1080×1920) using center-crop + pad; export to `/tmp/science_narrator/<run_id>/video_vertical.mp4`; update stdout JSON to return both `Video` entries in `videos` array per updated Stage 5 contract
-- [ ] T020 [P] [US2] Implement vertical safe-zone caption repositioning in `python/render_video.py`: for 9:16 frame, reposition caption `TextClip` to stay within vertical safe zone (top 80% of frame height); reposition arXiv ID overlay to bottom-center instead of bottom-right; ensure no text is cropped by frame edges
+- [X] T019 [US2] Extend `python/render_video.py` to export both formats in one invocation: after 16:9 export, reframe the same `CompositeVideoClip` to 9:16 (1080×1920) using center-crop + pad; export to `/tmp/science_narrator/<run_id>/video_vertical.mp4`; update stdout JSON to return both `Video` entries in `videos` array per updated Stage 5 contract
+- [X] T020 [P] [US2] Implement vertical safe-zone caption repositioning in `python/render_video.py`: for 9:16 frame, reposition caption `TextClip` to stay within vertical safe zone (top 80% of frame height); reposition arXiv ID overlay to bottom-center instead of bottom-right; ensure no text is cropped by frame edges
 - [ ] T021 [US2] Update `python/validate_manifest.py` to assert exactly two entries in `video_files` (one `vertical_9_16`, one `horizontal_16_9`); exit 1 with descriptive error if either format is missing
 - [ ] T022 [US2] Update Stage 5 Execute Command node in `n8n_workflows/science_narrator.json` to parse both file paths from updated `render_video.py` stdout and pass both to Stage 6 `--videos` argument
 
