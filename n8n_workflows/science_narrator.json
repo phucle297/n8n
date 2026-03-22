@@ -1,0 +1,250 @@
+{
+  "name": "Science Narrator",
+  "nodes": [
+    {
+      "id": "trigger-1",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "parameters": {}
+    },
+    {
+      "id": "set-topic",
+      "name": "Set Topic",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [460, 300],
+      "parameters": {
+        "mode": "manual",
+        "duplicateItem": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "topic-field",
+              "name": "topic",
+              "value": "gravitational waves",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "notes": "Change this value to any science topic you want to narrate (e.g. 'black holes', 'quantum entanglement', 'dark matter')."
+    },
+    {
+      "id": "stage-1-fetch",
+      "name": "Stage 1: Fetch Paper",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [680, 300],
+      "parameters": {
+        "command": "cd /app && python python/fetch_paper.py --topic \"{{ $json.topic }}\" --source auto"
+      },
+      "notes": "Searches ArXiv (then NASA RSS as fallback) for a non-duplicate paper matching the topic.\n\nOutputs: { paper: {...}, run_id: '...' }"
+    },
+    {
+      "id": "stage-2-script",
+      "name": "Stage 2: Generate Script",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [900, 300],
+      "parameters": {
+        "command": "cd /app && python python/generate_script.py --paper '{{ $json.stdout }}'"
+      },
+      "notes": "Calls GPT-4o to write a 750-900 word structured narration script.\n\nRequires: OPENAI_API_KEY env var\nOutputs: { script: {...}, run_id: '...' }"
+    },
+    {
+      "id": "stage-3-voice",
+      "name": "Stage 3: Generate Voice",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1120, 180],
+      "parameters": {
+        "command": "cd /app && python python/generate_voice.py --script '{{ $json.stdout }}' --run-id '{{ $json.stdout | fromJSON | getAttribute: \"run_id\" }}'"
+      },
+      "notes": "Synthesises narration MP3 using gTTS or OpenAI TTS-1-HD.\n\nVoice Profile env vars (all optional — defaults shown):\n  VOICE_PROVIDER=gtts        (gtts | openai)\n  VOICE_LOCALE=en-US         (BCP-47 language tag)\n  VOICE_SPEED=1.0            (0.5–2.0; gTTS ignores)\n  VOICE_PITCH=default        (default | low | high)\n  VOICE_ID=                  (OpenAI voice name e.g. nova, alloy, echo)\n\nIf VOICE_PROVIDER=openai, OPENAI_API_KEY is also required.\nOutputs: { audio: {...}, run_id: '...' }"
+    },
+    {
+      "id": "stage-4-images",
+      "name": "Stage 4: Generate Images",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1120, 420],
+      "parameters": {
+        "command": "cd /app && python python/generate_images.py --script '{{ $node[\"Stage 2: Generate Script\"].json.stdout }}' --run-id '{{ $node[\"Stage 2: Generate Script\"].json.stdout | fromJSON | getAttribute: \"run_id\" }}'"
+      },
+      "notes": "Generates one DALL-E 3 image per key concept in the script.\n\nRequires: OPENAI_API_KEY env var\nOutputs: { images: [...], run_id: '...' }"
+    },
+    {
+      "id": "stage-5-render",
+      "name": "Stage 5: Render Video",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1340, 300],
+      "parameters": {
+        "command": "cd /app && python python/render_video.py --script '{{ $node[\"Stage 2: Generate Script\"].json.stdout }}' --audio '{{ $node[\"Stage 3: Generate Voice\"].json.stdout }}' --images '{{ $node[\"Stage 4: Generate Images\"].json.stdout }}' --run-id '{{ $node[\"Stage 3: Generate Voice\"].json.stdout | fromJSON | getAttribute: \"run_id\" }}'",
+        "executeOnce": false
+      },
+      "notes": "MoviePy compositing: images + audio + word-level subtitles + arXiv watermark.\n\nExports both:\n  - video_horizontal.mp4 (1920x1080, 16:9)\n  - video_vertical.mp4   (1080x1920, 9:16)\n\nOutputs: { videos: [...], run_id: '...' }"
+    },
+    {
+      "id": "stage-6-validate",
+      "name": "Stage 6: Validate Manifest",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1560, 300],
+      "parameters": {
+        "command": "cd /app && python python/validate_manifest.py --audio '{{ $node[\"Stage 3: Generate Voice\"].json.stdout }}' --images '{{ $node[\"Stage 4: Generate Images\"].json.stdout }}' --videos '{{ $node[\"Stage 5: Render Video\"].json.stdout }}' --run-id '{{ $node[\"Stage 3: Generate Voice\"].json.stdout | fromJSON | getAttribute: \"run_id\" }}'"
+      },
+      "notes": "Compliance gate: validates all asset licences against approved list.\nWrites assets-manifest.json to output/<run_id>/.\nRegisters paper ID in data/processed_papers.json (prevents duplicate processing).\n\nExits 1 if any asset has an unapproved licence or verified=false.\nOutputs: { manifest: {...}, manifest_path: '...', run_id: '...' }"
+    },
+    {
+      "id": "move-files",
+      "name": "Move to Output",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1780, 300],
+      "parameters": {
+        "command": "RUN_ID='{{ $json.stdout | fromJSON | getAttribute: \"run_id\" }}' && mkdir -p /app/output/${RUN_ID} && mv /tmp/science_narrator/${RUN_ID}/video_horizontal.mp4 /app/output/${RUN_ID}/ && mv /tmp/science_narrator/${RUN_ID}/video_vertical.mp4 /app/output/${RUN_ID}/ && cp /app/output/${RUN_ID}/assets-manifest.json /app/output/${RUN_ID}/assets-manifest.json 2>/dev/null || true && echo \"{\\\"output_dir\\\": \\\"/app/output/${RUN_ID}\\\", \\\"run_id\\\": \\\"${RUN_ID}\\\"}\" "
+      },
+      "notes": "Moves completed video files from /tmp/science_narrator/<run_id>/ to /app/output/<run_id>/.\nOutputs: { output_dir: '...', run_id: '...' }"
+    },
+    {
+      "id": "upload-youtube",
+      "name": "Upload YouTube (16:9)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [2000, 180],
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.googleapis.com/upload/youtube/v3/videos?uploadType=multipart&part=snippet,status",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "youTubeOAuth2Api",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "snippet.title",
+              "value": "Science Video: {{ $node[\"Stage 2: Generate Script\"].json.stdout | fromJSON | getAttribute: \"script\" | getAttribute: \"learning_objective\" }}"
+            },
+            {
+              "name": "snippet.description",
+              "value": "Science video generated by the Science Narrator pipeline.\n\nSource: {{ $node[\"Stage 2: Generate Script\"].json.stdout | fromJSON | getAttribute: \"script\" | getAttribute: \"paper_id\" }}\n\nGenerated with MoviePy + OpenAI."
+            },
+            {
+              "name": "status.privacyStatus",
+              "value": "private"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "notes": "SETUP REQUIRED:\n1. Create a YouTube OAuth2 credential in n8n (Settings → Credentials)\n2. Attach it to this node\n3. Change privacyStatus to 'public' or 'unlisted' when ready\n\nUploads the 16:9 horizontal video to YouTube."
+    },
+    {
+      "id": "upload-facebook",
+      "name": "Upload Facebook (9:16)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [2000, 420],
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v18.0/me/videos",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "facebookGraphApi",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "title",
+              "value": "Science Video: {{ $node[\"Stage 2: Generate Script\"].json.stdout | fromJSON | getAttribute: \"script\" | getAttribute: \"learning_objective\" }}"
+            },
+            {
+              "name": "description",
+              "value": "Source: {{ $node[\"Stage 2: Generate Script\"].json.stdout | fromJSON | getAttribute: \"script\" | getAttribute: \"paper_id\" }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "notes": "SETUP REQUIRED:\n1. Create a Facebook Graph API credential in n8n (Settings → Credentials)\n2. Attach it to this node\n3. Ensure your Facebook App has video_manage permission\n\nUploads the 9:16 vertical video to Facebook."
+    },
+    {
+      "id": "error-handler",
+      "name": "Error: Cleanup",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1120, 560],
+      "parameters": {
+        "command": "cd /app && RUN_ID='{{ $json.run_id || \"unknown\" }}' && python python/lib/run_logger.py 2>/dev/null || true && python python/lib/cleanup.py --run-id \"${RUN_ID}\" && echo \"{\\\"cleaned\\\": true, \\\"run_id\\\": \\\"${RUN_ID}\\\"}\""
+      },
+      "notes": "Triggered on any stage failure.\nRuns cleanup.py to remove /tmp/science_narrator/<run_id>/ temp files.\nLogs the failure to logs/<run_id>.json."
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [{ "node": "Set Topic", "type": "main", "index": 0 }]
+      ]
+    },
+    "Set Topic": {
+      "main": [
+        [{ "node": "Stage 1: Fetch Paper", "type": "main", "index": 0 }]
+      ]
+    },
+    "Stage 1: Fetch Paper": {
+      "main": [
+        [{ "node": "Stage 2: Generate Script", "type": "main", "index": 0 }]
+      ]
+    },
+    "Stage 2: Generate Script": {
+      "main": [
+        [
+          { "node": "Stage 3: Generate Voice", "type": "main", "index": 0 },
+          { "node": "Stage 4: Generate Images", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Stage 3: Generate Voice": {
+      "main": [
+        [{ "node": "Stage 5: Render Video", "type": "main", "index": 0 }]
+      ]
+    },
+    "Stage 4: Generate Images": {
+      "main": [
+        [{ "node": "Stage 5: Render Video", "type": "main", "index": 0 }]
+      ]
+    },
+    "Stage 5: Render Video": {
+      "main": [
+        [{ "node": "Stage 6: Validate Manifest", "type": "main", "index": 0 }]
+      ]
+    },
+    "Stage 6: Validate Manifest": {
+      "main": [
+        [{ "node": "Move to Output", "type": "main", "index": 0 }]
+      ]
+    },
+    "Move to Output": {
+      "main": [
+        [
+          { "node": "Upload YouTube (16:9)", "type": "main", "index": 0 },
+          { "node": "Upload Facebook (9:16)", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "staticData": null,
+  "tags": ["science-narrator", "automation"],
+  "triggerCount": 0,
+  "updatedAt": "2026-03-22T00:00:00.000Z",
+  "versionId": "001-science-narrator-v1"
+}
