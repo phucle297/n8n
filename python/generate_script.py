@@ -25,7 +25,7 @@ from datetime import datetime, timezone
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from python.lib.ai_config import load as load_ai_config
-from python.lib.ai_provider import generate_text
+from python.lib.ai_provider import get_provider
 from python.lib.voice_profile import ConfigError
 
 
@@ -107,13 +107,10 @@ def main() -> None:
         abstract=abstract,
     )
 
+    ai = get_provider(ai_cfg["provider"], ai_cfg["api_key"])
+
     try:
-        raw_json, model_used = generate_text(
-            system_prompt=_SYSTEM_PROMPT,
-            user_prompt=user_prompt,
-            provider=ai_cfg["provider"],
-            api_key=ai_cfg["api_key"],
-        )
+        raw_json, model_used = ai.generate_text(_SYSTEM_PROMPT, user_prompt)
     except Exception as exc:
         print(f"ERROR: AI API error ({ai_cfg['provider']}): {exc}", file=sys.stderr)
         sys.exit(1)

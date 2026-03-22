@@ -18,11 +18,12 @@ from typing import TypedDict
 
 from python.lib.voice_profile import ConfigError  # reuse existing ConfigError
 
-VALID_PROVIDERS = {"openai", "gemini"}
-
+# Maps provider name → its API key environment variable.
+# When a new provider is added to ai_provider._REGISTRY, add its key here too.
 _KEY_ENV: dict[str, str] = {
     "openai": "OPENAI_API_KEY",
     "gemini": "GEMINI_API_KEY",
+    # "anthropic": "ANTHROPIC_API_KEY",
 }
 
 
@@ -47,10 +48,10 @@ def load() -> AIConfig:
             file=sys.stderr,
         )
 
-    if provider not in VALID_PROVIDERS:
+    if provider not in _KEY_ENV:
         raise ConfigError(
             f"AI_PROVIDER='{provider}' is not supported. "
-            f"Choose from: {sorted(VALID_PROVIDERS)}"
+            f"Choose from: {sorted(_KEY_ENV)}"
         )
 
     key_env = _KEY_ENV[provider]

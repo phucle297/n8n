@@ -28,7 +28,7 @@ from datetime import datetime, timezone
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from python.lib.ai_config import load as load_ai_config
-from python.lib.ai_provider import generate_image
+from python.lib.ai_provider import get_provider
 from python.lib.voice_profile import ConfigError
 
 
@@ -72,7 +72,7 @@ def main() -> None:
         sys.exit(1)
 
     provider = ai_cfg["provider"]
-    api_key = ai_cfg["api_key"]
+    ai = get_provider(provider, ai_cfg["api_key"])
 
     # Map provider to asset metadata
     _SOURCE_MAP = {"openai": "dalle3", "gemini": "imagen3"}
@@ -94,7 +94,7 @@ def main() -> None:
         img_path = os.path.join(out_dir, img_filename)
 
         try:
-            generate_image(prompt=prompt, provider=provider, api_key=api_key, out_path=img_path)
+            ai.generate_image(prompt, img_path)
         except Exception as exc:
             print(f"ERROR: Image generation failed for concept '{term}': {exc}", file=sys.stderr)
             sys.exit(1)
