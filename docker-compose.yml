@@ -1,0 +1,44 @@
+services:
+  n8n:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: science-narrator-n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    volumes:
+      # n8n persistent data (workflows, credentials, executions)
+      - n8n_data:/home/node/.n8n
+      # Pipeline source — live-mounted so edits take effect without rebuild
+      - ./python:/app/python
+      - ./n8n_workflows:/app/n8n_workflows
+      # Output and logs persisted on host
+      - ./output:/app/output
+      - ./logs:/app/logs
+      # Dedup store persisted on host
+      - ./data:/app/data
+    environment:
+      # n8n configuration
+      - N8N_HOST=0.0.0.0
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - WEBHOOK_URL=http://localhost:5678/
+      # Allow Execute Command nodes (required for pipeline)
+      - N8N_ALLOW_EXEC=true
+      # Timezone
+      - GENERIC_TIMEZONE=UTC
+      # Increase execution timeout to 20 min (pipeline can take ~15 min)
+      - EXECUTIONS_TIMEOUT=1200
+      - EXECUTIONS_TIMEOUT_MAX=1200
+    env_file:
+      # Contains OPENAI_API_KEY and optional VOICE_* variables
+      # Copy .env.example to .env and fill in your values
+      - .env
+    tmpfs:
+      # Temp assets written during each run
+      - /tmp/science_narrator:uid=1000,gid=1000
+
+volumes:
+  n8n_data:
+    driver: local
