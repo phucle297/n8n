@@ -26,4 +26,9 @@ Python 3.11+: Follow standard conventions
 - 001-science-narrator: Added Python 3.11+
 
 <!-- MANUAL ADDITIONS START -->
+## Spec Location
+
+All specs (superpowers design docs, speckit feature specs, plans, tasks) live under `specs/`.
+Superpowers brainstorming design docs go to `specs/<feature-branch>/YYYY-MM-DD-<topic>-design.md`.
+Do NOT use `docs/superpowers/specs/` — that path is retired.
 <!-- MANUAL ADDITIONS END -->
