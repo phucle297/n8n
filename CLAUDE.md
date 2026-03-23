@@ -28,7 +28,10 @@ Python 3.11+: Follow standard conventions
 <!-- MANUAL ADDITIONS START -->
 ## Spec Location
 
-All specs (superpowers design docs, speckit feature specs, plans, tasks) live under `specs/`.
-Superpowers brainstorming design docs go to `specs/<feature-branch>/YYYY-MM-DD-<topic>-design.md`.
-Do NOT use `docs/superpowers/specs/` — that path is retired.
+All specs live under `specs/NNN-feature-name/` following speckit conventions:
+- `specs/NNN-feature-name/spec.md` — feature specification
+- `specs/NNN-feature-name/plan.md` — implementation plan
+- `specs/NNN-feature-name/tasks.md` — tasks list
+
+Do NOT use date-prefixed filenames or `docs/superpowers/specs/` — both are retired.
 <!-- MANUAL ADDITIONS END -->

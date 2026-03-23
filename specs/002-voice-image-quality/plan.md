@@ -1,4 +1,7 @@
-# Expressive Voice & Content-Aware Images — Implementation Plan
+# Implementation Plan: Expressive Voice & Content-Aware Images
+
+**Branch**: `002-voice-image-quality` | **Date**: 2026-03-23 | **Spec**: [spec.md](spec.md)
+**Input**: Feature specification from `/specs/002-voice-image-quality/spec.md`
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
