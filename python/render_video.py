@@ -20,6 +20,11 @@ import subprocess
 import sys
 from datetime import datetime, timezone
 
+# PIL.Image.ANTIALIAS was removed in Pillow 10.0; MoviePy 1.0.3 still uses it.
+import PIL.Image
+if not hasattr(PIL.Image, "ANTIALIAS"):
+    PIL.Image.ANTIALIAS = PIL.Image.LANCZOS
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -104,6 +109,7 @@ def _build_caption_clips(narration_text: str, audio_duration: float, width: int,
         clip = (
             TextClip(
                 chunk,
+                font="DejaVu-Sans-Bold",
                 fontsize=40,
                 color="white",
                 stroke_color="black",
@@ -127,6 +133,7 @@ def _build_watermark_clip(paper_id: str, duration: float, width: int, height: in
     clip = (
         TextClip(
             paper_id,
+            font="DejaVu-Sans",
             fontsize=24,
             color="white",
             stroke_color="black",

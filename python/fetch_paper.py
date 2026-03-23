@@ -30,6 +30,18 @@ def _utcnow() -> str:
     return datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+# ArXiv category codes focused on physics and quantum physics.
+# See: https://arxiv.org/category_taxonomy
+_DEFAULT_CATEGORIES = [
+    "quant-ph",   # Quantum Physics (primary)
+    "hep-th",     # High Energy Physics - Theory (QFT, string theory)
+    "hep-ph",     # High Energy Physics - Phenomenology
+    "gr-qc",      # General Relativity & Quantum Cosmology
+    "cond-mat",   # Condensed Matter (includes quantum materials)
+    "physics",    # Physics (general)
+]
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Stage 1: fetch science paper")
     parser.add_argument("--topic", required=True, help="Topic keyword to search")
@@ -38,6 +50,12 @@ def main() -> None:
         choices=["arxiv", "nasa", "auto"],
         default="auto",
         help="Paper source (default: auto — arxiv first, nasa fallback)",
+    )
+    parser.add_argument(
+        "--categories",
+        nargs="*",
+        default=_DEFAULT_CATEGORIES,
+        help="ArXiv category codes to restrict results to (default: physics categories)",
     )
     args = parser.parse_args()
 
@@ -61,7 +79,7 @@ def main() -> None:
     papers: list[dict] = []
 
     if args.source in ("arxiv", "auto"):
-        papers = arxiv_client.search(topic, max_results=10)
+        papers = arxiv_client.search(topic, max_results=10, categories=args.categories)
 
     if not papers and args.source in ("nasa", "auto"):
         papers = nasa_rss_client.search(topic)

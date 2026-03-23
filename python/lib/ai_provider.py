@@ -100,50 +100,55 @@ class OpenAIProvider(AIProvider):
 class GeminiProvider(AIProvider):
     """
     Google Gemini strategy.
-        Text  : Gemini 1.5 Pro (gemini-1.5-pro)
+        Text  : Gemini 2.0 Flash (gemini-2.5-flash)
         Images: Imagen 3 (imagen-3.0-generate-001)
     """
 
+    _TEXT_MODEL = "gemini-2.5-flash"
+
     def generate_text(self, system_prompt: str, user_prompt: str) -> tuple[str, str]:
-        genai = self._configure()
-        model_name = "gemini-1.5-pro"
-        model = genai.GenerativeModel(
-            model_name=model_name,
-            system_instruction=system_prompt,
+        client = self._client()
+        from google.genai import types  # type: ignore
+        response = client.models.generate_content(
+            model=self._TEXT_MODEL,
+            contents=user_prompt,
+            config=types.GenerateContentConfig(
+                system_instruction=system_prompt,
+                response_mime_type="application/json",
+            ),
         )
-        # Gemini has no response_format flag — instruct via prompt
-        full_prompt = user_prompt + "\n\nRespond with ONLY a raw JSON object. No markdown fences."
-        response = model.generate_content(full_prompt)
         raw = _strip_json_fences(response.text or "")
-        return raw, model_name
+        return raw, self._TEXT_MODEL
 
     def generate_image(self, prompt: str, out_path: str) -> None:
-        genai = self._configure()
-        imagen = genai.ImageGenerationModel("imagen-3.0-generate-001")
-        result = imagen.generate_images(
+        client = self._client()
+        from google.genai import types  # type: ignore
+        result = client.models.generate_images(
+            model="models/imagen-4.0-generate-001",
             prompt=prompt,
-            number_of_images=1,
-            safety_filter_level="block_only_high",
-            aspect_ratio="16:9",
+            config=types.GenerateImagesConfig(
+                number_of_images=1,
+                safety_filter_level="block_low_and_above",
+                aspect_ratio="16:9",
+            ),
         )
-        if not result.images:
+        if not result.generated_images:
             raise RuntimeError(f"Imagen returned no images for prompt: {prompt[:80]}")
-        image_bytes: bytes = result.images[0].image.image_bytes
+        image_bytes: bytes = result.generated_images[0].image.image_bytes
         with open(out_path, "wb") as fh:
             fh.write(image_bytes)
 
-    def _configure(self):
+    def _client(self):
         try:
-            import google.generativeai as genai  # type: ignore
+            from google import genai  # type: ignore
         except ImportError:
             print(
-                "ERROR: google-generativeai not installed. "
-                "Run: pip install google-generativeai",
+                "ERROR: google-genai not installed. "
+                "Run: pip install google-genai",
                 file=sys.stderr,
             )
             raise
-        genai.configure(api_key=self.api_key)
-        return genai
+        return genai.Client(api_key=self.api_key)
 
 
 # ---------------------------------------------------------------------------

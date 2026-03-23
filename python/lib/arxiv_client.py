@@ -22,15 +22,28 @@ def _text(el: ET.Element | None) -> str:
     return (el.text or "").strip()
 
 
-def search(topic: str, max_results: int = 5) -> list[dict]:
+def search(
+    topic: str,
+    max_results: int = 5,
+    categories: list[str] | None = None,
+) -> list[dict]:
     """
     Query the ArXiv API for papers matching topic.
 
+    categories: optional list of ArXiv category codes (e.g. ["quant-ph", "hep-th"])
+                to restrict results. When provided, only papers in those categories
+                are returned.
+
     Returns a list of Paper dicts. Returns [] on HTTP error or no results.
     """
+    query = f"all:{topic}"
+    if categories:
+        cat_filter = " OR ".join(f"cat:{c}" for c in categories)
+        query = f"({query}) AND ({cat_filter})"
+
     params = urllib.parse.urlencode(
         {
-            "search_query": f"all:{topic}",
+            "search_query": query,
             "start": 0,
             "max_results": max_results,
             "sortBy": "submittedDate",

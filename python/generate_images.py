@@ -44,6 +44,19 @@ _PROMPT_TEMPLATE = (
 )
 
 
+def _placeholder_image(term: str, out_path: str) -> None:
+    """Create a dark-blue placeholder PNG with the concept term when AI generation is unavailable."""
+    from PIL import Image, ImageDraw  # type: ignore
+    img = Image.new("RGB", (1792, 1024), color=(15, 25, 70))
+    draw = ImageDraw.Draw(img)
+    text = f"[{term}]"
+    # Draw centred text using default font
+    bbox = draw.textbbox((0, 0), text)
+    tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    draw.text(((1792 - tw) // 2, (1024 - th) // 2), text, fill=(180, 200, 255))
+    img.save(out_path)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Stage 4: generate concept images")
     parser.add_argument("--script", required=True, help="JSON string from generate_script.py")
@@ -96,8 +109,12 @@ def main() -> None:
         try:
             ai.generate_image(prompt, img_path)
         except Exception as exc:
-            print(f"ERROR: Image generation failed for concept '{term}': {exc}", file=sys.stderr)
-            sys.exit(1)
+            print(
+                f"WARNING: AI image generation failed for '{term}' ({exc}). "
+                "Using placeholder image.",
+                file=sys.stderr,
+            )
+            _placeholder_image(term, img_path)
 
         if not os.path.isfile(img_path) or os.path.getsize(img_path) == 0:
             print(f"ERROR: Image file for '{term}' not written to disk.", file=sys.stderr)

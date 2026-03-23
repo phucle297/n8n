@@ -14,13 +14,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python-is-python3 \
     # --- video / audio ---
     ffmpeg \
-    # --- ImageMagick (required by MoviePy TextClip) ---
+    # --- ImageMagick + fonts (required by MoviePy TextClip) ---
     imagemagick \
+    gsfonts \
+    fonts-dejavu-core \
     # --- C extension deps for Pillow etc. ---
     libjpeg-dev \
     zlib1g-dev \
     libfreetype6-dev \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    # MoviePy TextClip uses ImageMagick's @file syntax; Debian's default policy blocks it.
+    && sed -i 's|<policy domain="path" rights="none" pattern="@\*"/>|<!-- removed: blocked MoviePy TextClip -->|' /etc/ImageMagick-6/policy.xml
 
 # Install n8n. --legacy-peer-deps silences peer-conflict warnings without breaking anything.
 RUN npm install -g n8n@latest --legacy-peer-deps
