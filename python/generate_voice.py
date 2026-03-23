@@ -8,7 +8,8 @@ Usage:
     python python/generate_voice.py --script '<json>' --run-id '<uuid>'
 
 Environment:
-    VOICE_PROVIDER   gtts | openai  (default: gtts)
+    VOICE_PROVIDER   gtts | openai | edge-tts  (default: edge-tts)
+                     Note: VOICE_SPEED and VOICE_PITCH are ignored by edge-tts
     VOICE_LOCALE     BCP-47         (default: en-US)
     VOICE_SPEED      0.5–2.0        (default: 1.0; gTTS ignores this)
     VOICE_PITCH      default|low|high (default: default; ignored by OpenAI TTS)
@@ -59,6 +60,24 @@ def _synthesise_gtts(narration_text: str, locale: str, out_path: str) -> None:
     lang = locale.split("-")[0]  # gTTS uses 2-letter lang codes
     tts = gTTS(text=narration_text, lang=lang)
     tts.save(out_path)
+
+
+async def _run_edge_tts(text: str, voice: str, path: str) -> None:
+    try:
+        import edge_tts  # type: ignore
+    except ImportError:
+        raise RuntimeError("edge-tts not installed. Run: pip install edge-tts>=6.1")
+    communicate = edge_tts.Communicate(text, voice)
+    await communicate.save(path)
+
+
+def _synthesise_edge_tts(narration_text: str, voice_id: str, out_path: str) -> None:
+    """Generate audio with edge-tts (Microsoft Neural TTS) and save to out_path."""
+    import asyncio
+    effective_voice = voice_id if voice_id else "en-US-AriaNeural"
+    # asyncio.run() is safe here: generate_voice.py is invoked as a CLI subprocess,
+    # never from within an already-running event loop.
+    asyncio.run(_run_edge_tts(narration_text, effective_voice, out_path))
 
 
 def _synthesise_openai(
@@ -132,6 +151,10 @@ def main() -> None:
             _synthesise_gtts(narration_text, locale, out_path)
             source = "gtts"
             licence = "pipeline-generated"
+        elif provider == "edge-tts":
+            _synthesise_edge_tts(narration_text, voice_id, out_path)
+            source = "edge-tts"
+            licence = "microsoft-edge-tts-tos"
         elif provider == "openai":
             api_key = os.environ.get("OPENAI_API_KEY", "").strip()
             if not api_key:
