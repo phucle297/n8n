@@ -5,7 +5,7 @@ Reads VOICE_PROVIDER, VOICE_LOCALE, VOICE_SPEED, VOICE_PITCH, VOICE_ID
 from environment variables and returns a validated VoiceProfile dict.
 
 Defaults (used when no env vars are set):
-    provider=gtts, locale=en-US, speed=1.0, pitch=default, voice_id=""
+    provider=edge-tts, locale=en-US, speed=1.0, pitch=default, voice_id=""
 """
 
 import os
@@ -25,12 +25,12 @@ class VoiceProfile(TypedDict):
     voice_id: str
 
 
-_VALID_PROVIDERS = {"gtts", "openai"}
+_VALID_PROVIDERS = {"gtts", "openai", "edge-tts"}
 _SPEED_MIN = 0.5
 _SPEED_MAX = 2.0
 
 _DEFAULTS: VoiceProfile = {
-    "provider": "gtts",
+    "provider": "edge-tts",
     "locale": "en-US",
     "speed": 1.0,
     "pitch": "default",
@@ -67,6 +67,12 @@ def load() -> VoiceProfile:
         raise ConfigError(
             f"VOICE_PROVIDER='{provider}' is not valid. "
             f"Choose from: {sorted(_VALID_PROVIDERS)}"
+        )
+
+    if provider == "edge-tts" and (raw_speed or raw_pitch):
+        print(
+            "WARNING: VOICE_SPEED and VOICE_PITCH are ignored by edge-tts provider.",
+            file=sys.stderr,
         )
 
     # --- OpenAI API key check ---
