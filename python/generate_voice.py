@@ -13,7 +13,7 @@ Environment:
     VOICE_LOCALE     BCP-47         (default: en-US)
     VOICE_SPEED      0.5–2.0        (default: 1.0; gTTS ignores this)
     VOICE_PITCH      default|low|high (default: default; ignored by OpenAI TTS)
-    VOICE_ID         OpenAI voice   (default: ""; used only for openai provider)
+    VOICE_ID         TTS voice ID   (default: ""; openai: voice name; edge-tts: BCP-47 neural voice e.g. en-US-GuyNeural)
     OPENAI_API_KEY   required when VOICE_PROVIDER=openai
 
 stdout on success: JSON per cli-interface.md Stage 3 contract
