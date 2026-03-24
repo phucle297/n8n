@@ -1,0 +1,11 @@
+output/
+logs/
+python/venv/
+**/__pycache__/
+*.pyc
+.env
+*.mp4
+*.mp3
+
+# Track n8n workflow JSON files
+!n8n_workflows/*.json

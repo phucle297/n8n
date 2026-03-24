@@ -1,0 +1,252 @@
+{
+  "id": "1",
+  "name": "Science Narrator",
+  "nodes": [
+    {
+      "id": "47e71fed-8c48-45ee-96de-1b9fab76cbf4",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "parameters": {}
+    },
+    {
+      "id": "b76f57e8-2af1-46bf-87fc-ec77925e2da7",
+      "name": "Set Topic",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [460, 300],
+      "parameters": {
+        "mode": "manual",
+        "duplicateItem": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "topic-field",
+              "name": "topic",
+              "value": "quantum entanglement",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "notes": "Change this value to any science topic you want to narrate."
+    },
+    {
+      "id": "2a02f21b-25e1-4e94-b03f-e647c25c0522",
+      "name": "Stage 1: Fetch Paper",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [680, 300],
+      "parameters": {
+        "command": "cd /app && python3 python/fetch_paper.py --topic \"{{ $json.topic }}\" --source auto > /tmp/science_narrator_s1.json && cat /tmp/science_narrator_s1.json"
+      },
+      "notes": "Searches ArXiv (then NASA RSS as fallback) for a non-duplicate paper.\nOutput saved to /tmp/science_narrator_s1.json for downstream stages."
+    },
+    {
+      "id": "d72b87c0-68ff-4f75-bad4-027dd59cea89",
+      "name": "Stage 2: Generate Script",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [900, 300],
+      "parameters": {
+        "command": "cd /app && python3 -c \"import subprocess,sys; stage_in=open('/tmp/science_narrator_s1.json').read(); r=subprocess.run(['python3','python/generate_script.py','--paper',stage_in],capture_output=True,text=True,cwd='/app'); sys.stderr.write(r.stderr); open('/tmp/science_narrator_s2.json','w').write(r.stdout); sys.stdout.write(r.stdout); sys.exit(r.returncode)\""
+      },
+      "notes": "Reads stage 1 output from /tmp/science_narrator_s1.json.\nPasses JSON to generate_script.py via subprocess (no shell quoting issues).\nOutput saved to /tmp/science_narrator_s2.json."
+    },
+    {
+      "id": "68dcb874-edd6-4f4f-9b85-d24061dad257",
+      "name": "Stage 3: Generate Voice",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1120, 180],
+      "parameters": {
+        "command": "cd /app && python3 -c \"import subprocess,sys,json; s2=open('/tmp/science_narrator_s2.json').read(); run_id=json.loads(s2)['run_id']; r=subprocess.run(['python3','python/generate_voice.py','--script',s2,'--run-id',run_id],capture_output=True,text=True,cwd='/app'); sys.stderr.write(r.stderr); open('/tmp/science_narrator_s3.json','w').write(r.stdout); sys.stdout.write(r.stdout); sys.exit(r.returncode)\""
+      },
+      "notes": "Reads stage 2 output from /tmp/science_narrator_s2.json.\nOutput saved to /tmp/science_narrator_s3.json."
+    },
+    {
+      "id": "82b58c8c-c7e3-41b8-95ff-4fcb402a43b2",
+      "name": "Stage 4: Generate Images",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1120, 420],
+      "parameters": {
+        "command": "cd /app && python3 -c \"import subprocess,sys,json; s2=open('/tmp/science_narrator_s2.json').read(); run_id=json.loads(s2)['run_id']; r=subprocess.run(['python3','python/generate_images.py','--script',s2,'--run-id',run_id],capture_output=True,text=True,cwd='/app'); sys.stderr.write(r.stderr); open('/tmp/science_narrator_s4.json','w').write(r.stdout); sys.stdout.write(r.stdout); sys.exit(r.returncode)\""
+      },
+      "notes": "Reads stage 2 output from /tmp/science_narrator_s2.json.\nOutput saved to /tmp/science_narrator_s4.json."
+    },
+    {
+      "id": "6e7227ed-ab1f-4bb3-bcb7-0f3d0ce91dce",
+      "name": "Stage 5: Render Video",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1340, 300],
+      "parameters": {
+        "command": "cd /app && python3 -c \"import subprocess,sys,json; s2=open('/tmp/science_narrator_s2.json').read(); s3=open('/tmp/science_narrator_s3.json').read(); s4=open('/tmp/science_narrator_s4.json').read(); run_id=json.loads(s3)['run_id']; r=subprocess.run(['python3','python/render_video.py','--script',s2,'--audio',s3,'--images',s4,'--run-id',run_id],capture_output=True,text=True,cwd='/app'); sys.stderr.write(r.stderr); open('/tmp/science_narrator_s5.json','w').write(r.stdout); sys.stdout.write(r.stdout); sys.exit(r.returncode)\""
+      },
+      "notes": "Reads stage 2/3/4 outputs from /tmp/science_narrator_s*.json.\nOutput saved to /tmp/science_narrator_s5.json."
+    },
+    {
+      "id": "3de98108-e6ee-44f4-887d-c56a9caaed4b",
+      "name": "Stage 6: Validate Manifest",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1560, 300],
+      "parameters": {
+        "command": "cd /app && python3 -c \"import subprocess,sys,json; s3=open('/tmp/science_narrator_s3.json').read(); s4=open('/tmp/science_narrator_s4.json').read(); s5=open('/tmp/science_narrator_s5.json').read(); run_id=json.loads(s3)['run_id']; r=subprocess.run(['python3','python/validate_manifest.py','--audio',s3,'--images',s4,'--videos',s5,'--run-id',run_id],capture_output=True,text=True,cwd='/app'); sys.stderr.write(r.stderr); open('/tmp/science_narrator_s6.json','w').write(r.stdout); sys.stdout.write(r.stdout); sys.exit(r.returncode)\""
+      },
+      "notes": "Reads stage 3/4/5 outputs from /tmp/science_narrator_s*.json.\nOutput saved to /tmp/science_narrator_s6.json."
+    },
+    {
+      "id": "fe959361-37f1-4259-adf2-4278413a98e7",
+      "name": "Move to Output",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1780, 300],
+      "parameters": {
+        "command": "RUN_ID=$(python3 -c \"import json; print(json.loads(open('/tmp/science_narrator_s6.json').read())['run_id'])\") && mkdir -p /app/output/${RUN_ID} && mv /tmp/science_narrator/${RUN_ID}/video_horizontal.mp4 /app/output/${RUN_ID}/ && mv /tmp/science_narrator/${RUN_ID}/video_vertical.mp4 /app/output/${RUN_ID}/ && echo \"{\\\"output_dir\\\": \\\"/app/output/${RUN_ID}\\\", \\\"run_id\\\": \\\"${RUN_ID}\\\"}\""
+      },
+      "notes": "Reads run_id from /tmp/science_narrator_s6.json.\nMoves completed videos to /app/output/<run_id>/."
+    },
+    {
+      "id": "709d3f6f-651f-4267-822c-f48147936bb5",
+      "name": "Upload YouTube (16:9)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [2000, 180],
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.googleapis.com/upload/youtube/v3/videos?uploadType=multipart&part=snippet,status",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "youTubeOAuth2Api",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "snippet.title",
+              "value": "Science Video: {{ $json.stdout | fromJSON | getAttribute: \"script\" | getAttribute: \"learning_objective\" }}"
+            },
+            {
+              "name": "snippet.description",
+              "value": "Science video generated by the Science Narrator pipeline.\n\nGenerated with MoviePy + OpenAI."
+            },
+            {
+              "name": "status.privacyStatus",
+              "value": "private"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "notes": "SETUP REQUIRED:\n1. Create a YouTube OAuth2 credential in n8n (Settings → Credentials)\n2. Attach it to this node\n3. Change privacyStatus to 'public' or 'unlisted' when ready"
+    },
+    {
+      "id": "2bea085b-4b16-4e22-8f95-7d752eb026aa",
+      "name": "Upload Facebook (9:16)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [2000, 420],
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v18.0/me/videos",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "facebookGraphApi",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "title",
+              "value": "Science Video"
+            },
+            {
+              "name": "description",
+              "value": "Science video generated by the Science Narrator pipeline."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "notes": "SETUP REQUIRED:\n1. Create a Facebook Graph API credential in n8n (Settings → Credentials)\n2. Attach it to this node\n3. Ensure your Facebook App has video_manage permission"
+    },
+    {
+      "id": "d1f09789-76bf-461e-814c-0b7a8a232087",
+      "name": "Error: Cleanup",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1120, 560],
+      "parameters": {
+        "command": "cd /app && RUN_ID=$(python3 -c \"import json; print(json.loads(open('/tmp/science_narrator_s1.json').read()).get('run_id','unknown'))\" 2>/dev/null || echo unknown) && python3 python/lib/cleanup.py --run-id \"${RUN_ID}\" 2>/dev/null || true && echo \"{\\\"cleaned\\\": true, \\\"run_id\\\": \\\"${RUN_ID}\\\"}\""
+      },
+      "notes": "Triggered on any stage failure.\nReads run_id from /tmp/science_narrator_s1.json.\nRuns cleanup.py to remove temp files."
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [{ "node": "Set Topic", "type": "main", "index": 0 }]
+      ]
+    },
+    "Set Topic": {
+      "main": [
+        [{ "node": "Stage 1: Fetch Paper", "type": "main", "index": 0 }]
+      ]
+    },
+    "Stage 1: Fetch Paper": {
+      "main": [
+        [{ "node": "Stage 2: Generate Script", "type": "main", "index": 0 }]
+      ]
+    },
+    "Stage 2: Generate Script": {
+      "main": [
+        [
+          { "node": "Stage 3: Generate Voice", "type": "main", "index": 0 },
+          { "node": "Stage 4: Generate Images", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Stage 3: Generate Voice": {
+      "main": [
+        [{ "node": "Stage 5: Render Video", "type": "main", "index": 0 }]
+      ]
+    },
+    "Stage 4: Generate Images": {
+      "main": [
+        [{ "node": "Stage 5: Render Video", "type": "main", "index": 0 }]
+      ]
+    },
+    "Stage 5: Render Video": {
+      "main": [
+        [{ "node": "Stage 6: Validate Manifest", "type": "main", "index": 0 }]
+      ]
+    },
+    "Stage 6: Validate Manifest": {
+      "main": [
+        [{ "node": "Move to Output", "type": "main", "index": 0 }]
+      ]
+    },
+    "Move to Output": {
+      "main": [
+        [
+          { "node": "Upload YouTube (16:9)", "type": "main", "index": 0 },
+          { "node": "Upload Facebook (9:16)", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "staticData": null,
+  "tags": [],
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "versionId": "001-science-narrator-v1"
+}
