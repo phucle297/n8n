@@ -89,9 +89,9 @@ def main() -> None:
 
     # Map provider to asset metadata
     _SOURCE_MAP = {"openai": "dalle3", "gemini": "imagen3"}
-    _LICENCE_MAP = {"openai": "openai-tos-commercial", "gemini": "openai-tos-commercial"}
+    _LICENCE_MAP = {"openai": "openai-tos-commercial", "gemini": "google-tos-commercial"}
     source = _SOURCE_MAP.get(provider, provider)
-    licence = _LICENCE_MAP.get(provider, "openai-tos-commercial")
+    licence = _LICENCE_MAP.get(provider, "unknown-tos")
 
     out_dir = f"/tmp/science_narrator/{run_id}"
     os.makedirs(out_dir, exist_ok=True)

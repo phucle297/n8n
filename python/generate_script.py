@@ -52,6 +52,7 @@ Requirements:
     - term: the scientific term
     - definition: plain-language definition (1–2 sentences)
     - narration_segment: 2–4 sentences explaining this concept; define the term on first use; cite "{paper_id}" when making factual claims
+    - visual_description: 1–2 sentence cinematic scene description for image generation. Describe exactly what to show: subject, action, mood, lighting, style. No text or labels in the image. Example: "A glowing double helix rotating slowly in a dark void, base pairs highlighted in blue and orange, photorealistic."
 - outline.conclusion: closing paragraph (~80 words) summarising key takeaways
 - narration_text: the complete narration formed by joining intro + all narration_segments + conclusion; target 750–900 words; define each technical term on first use; include arXiv citation "{paper_id}" at least once per factual claim
 - word_count: integer count of words in narration_text
@@ -63,7 +64,7 @@ Return this exact JSON structure:
   "learning_objective": "...",
   "outline": {{
     "intro": "...",
-    "key_concepts": [{{ "term": "...", "definition": "...", "narration_segment": "..." }}],
+    "key_concepts": [{{ "term": "...", "definition": "...", "narration_segment": "...", "visual_description": "..." }}],
     "conclusion": "..."
   }},
   "narration_text": "...",
@@ -121,6 +122,16 @@ def main() -> None:
     except json.JSONDecodeError as exc:
         print(f"ERROR: AI response is not valid JSON: {exc}\nRaw: {raw_json[:200]}", file=sys.stderr)
         sys.exit(1)
+
+    # Warn if any concept is missing visual_description (Stage 4 will fall back to template)
+    for concept in (gpt_data.get("outline") or {}).get("key_concepts") or []:
+        if not (concept.get("visual_description") or "").strip():
+            term = concept.get("term", "<unknown>")
+            print(
+                f"WARNING: concept '{term}' missing visual_description "
+                "— image will use fallback prompt.",
+                file=sys.stderr,
+            )
 
     # --- Build script object ---
     narration_text: str = gpt_data.get("narration_text", "")
