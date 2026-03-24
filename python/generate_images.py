@@ -101,7 +101,11 @@ def main() -> None:
     for idx, concept in enumerate(key_concepts):
         term = concept.get("term", f"concept_{idx + 1}")
         definition = concept.get("definition", "")
-        prompt = _PROMPT_TEMPLATE.format(concept=term, definition=definition)
+        visual_description = concept.get("visual_description", "")
+        if visual_description:
+            prompt = visual_description
+        else:
+            prompt = _PROMPT_TEMPLATE.format(concept=term, definition=definition)
 
         img_filename = f"image_{idx + 1:02d}.png"
         img_path = os.path.join(out_dir, img_filename)
